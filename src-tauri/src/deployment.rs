@@ -378,3 +378,47 @@ pub fn get_extraction_root(filename: &str) -> &'static str {
         _ => "./",
     }
 }
+
+// Returns Ok((needs_update=true, latest_version_guid)) if:
+// - No current version is installed
+// - The installed version does not match the latest guid
+// - The executable is missing
+pub async fn check_for_updates() -> Result<(bool, String), Box<dyn std::error::Error>> {
+    let client_settings = get_client_settings().await?;
+    let latest_guid = client_settings.client_version_upload.clone();
+
+    let state = crate::config::RobloxState::load()?;
+    let app_config_dir = crate::config::get_app_config_dir()?;
+    // FIXME: move every path related hardcode into a config.rs path map
+    let player_path = app_config_dir
+        .join("versions")
+        .join("player")
+        .join("RobloxPlayerBeta.exe");
+
+    let needs_update = state.player.version_guid.is_empty()
+        || state.player.version_guid != latest_guid
+        || !player_path.exists();
+
+    Ok((needs_update, latest_guid))
+}
+
+pub fn launch_roblox(player_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let app_config_dir = crate::config::get_app_config_dir()?;
+    // FIXME: move every path related hardcode into a config.rs path map
+    let install_dir = app_config_dir.join("versions").join("player");
+    let player_path = install_dir.join("RobloxPlayerBeta.exe");
+
+    if !player_path.exists() {
+        return Err("Roblox executable not found".into());
+    }
+
+    println!("Launching Roblox Player from: {}", player_path.display());
+
+    std::process::Command::new(&player_path)
+        .args(player_args)
+        .current_dir(&install_dir)
+        .spawn()
+        .map_err(|e| format!("Failed to spawn Roblox process: {}", e))?;
+
+    Ok(())
+}
