@@ -38,7 +38,7 @@ impl RobloxState {
 
 pub fn get_app_config_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let base_dir = if cfg!(target_os = "windows") {
-        std::env::var("APPDATA").map(PathBuf::from)?
+        std::env::var("LOCALAPPDATA").map(PathBuf::from)?
     } else {
         let home = std::env::var("HOME").map(PathBuf::from)?;
         home.join(".config")
